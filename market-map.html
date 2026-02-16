@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>BC + Alberta WUI Market Opportunity</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { background: #1A1A1A; width: 100%; height: 100%; overflow: hidden; }
+    #map { width: 100%; height: 100%; background: #1A1A1A; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+(function() {
+    var map = L.map('map', {
+        center: [54, -122],
+        zoom: 5,
+        zoomControl: false,
+        attributionControl: false
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+    }).addTo(map);
+
+    // CWFIS fire perimeters for context
+    L.tileLayer.wms('https://cwfis.cfs.nrcan.gc.ca/geoserver/public/wms', {
+        layers: 'NFDB_MRB',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.5,
+        sld_body: '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>NFDB_MRB</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">#E8712B</CssParameter><CssParameter name="fill-opacity">0.6</CssParameter></Fill><Stroke><CssParameter name="stroke">#FF9F5A</CssParameter><CssParameter name="stroke-width">0.2</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
+    }).addTo(map);
+
+    // Target communities - BC + Alberta WUI municipalities (pop 1K-100K, high risk)
+    var communities = [
+        // BC - PRIMARY TARGETS
+        {lat: 54.437, lng: -124.256, name: "Fort St. James", pop: 5000, risk: "Extreme", status: "PILOT", prov: "BC"},
+        {lat: 50.671, lng: -120.323, name: "Kamloops", pop: 100000, risk: "Extreme", prov: "BC"},
+        {lat: 49.883, lng: -119.496, name: "Kelowna", pop: 150000, risk: "Extreme", prov: "BC"},
+        {lat: 53.917, lng: -122.750, name: "Prince George", pop: 80000, risk: "High", prov: "BC"},
+        {lat: 52.130, lng: -122.142, name: "Williams Lake", pop: 11000, risk: "Extreme", prov: "BC"},
+        {lat: 51.648, lng: -120.846, name: "100 Mile House", pop: 2000, risk: "Extreme", prov: "BC"},
+        {lat: 50.260, lng: -119.270, name: "Vernon", pop: 45000, risk: "Extreme", prov: "BC"},
+        {lat: 49.049, lng: -119.497, name: "Penticton", pop: 37000, risk: "Extreme", prov: "BC"},
+        {lat: 50.680, lng: -119.185, name: "Salmon Arm", pop: 18000, risk: "High", prov: "BC"},
+        {lat: 52.975, lng: -122.497, name: "Quesnel", pop: 10000, risk: "Extreme", prov: "BC"},
+        {lat: 54.753, lng: -127.168, name: "Smithers", pop: 5000, risk: "High", prov: "BC"},
+        {lat: 58.789, lng: -122.760, name: "Fort Nelson", pop: 3500, risk: "Extreme", prov: "BC"},
+        {lat: 50.985, lng: -118.196, name: "Revelstoke", pop: 8000, risk: "High", prov: "BC"},
+        {lat: 49.322, lng: -117.661, name: "Trail", pop: 8000, risk: "High", prov: "BC"},
+        {lat: 49.490, lng: -117.291, name: "Nelson", pop: 11000, risk: "High", prov: "BC"},
+        {lat: 55.759, lng: -120.237, name: "Dawson Creek", pop: 13000, risk: "High", prov: "BC"},
+        {lat: 54.230, lng: -130.320, name: "Prince Rupert", pop: 12000, risk: "Moderate", prov: "BC"},
+        {lat: 59.237, lng: -129.998, name: "Dease Lake", pop: 500, risk: "High", prov: "BC"},
+        // Alberta - SECONDARY TARGETS
+        {lat: 56.726, lng: -111.379, name: "Fort McMurray", pop: 75000, risk: "Extreme", prov: "AB"},
+        {lat: 51.178, lng: -115.571, name: "Canmore", pop: 15000, risk: "High", prov: "AB"},
+        {lat: 55.166, lng: -118.804, name: "Grande Prairie", pop: 65000, risk: "High", prov: "AB"},
+        {lat: 53.893, lng: -116.578, name: "Edson", pop: 8500, risk: "Extreme", prov: "AB"},
+        {lat: 51.390, lng: -116.456, name: "Banff", pop: 8000, risk: "High", prov: "AB"},
+        {lat: 52.370, lng: -114.915, name: "Rocky Mtn House", pop: 7000, risk: "High", prov: "AB"},
+        {lat: 54.370, lng: -110.180, name: "Bonnyville", pop: 7000, risk: "High", prov: "AB"},
+        {lat: 54.767, lng: -113.853, name: "Athabasca", pop: 3000, risk: "High", prov: "AB"},
+        {lat: 53.080, lng: -115.340, name: "Drayton Valley", pop: 7500, risk: "High", prov: "AB"},
+        {lat: 56.234, lng: -120.846, name: "Peace River", pop: 7000, risk: "High", prov: "AB"},
+        {lat: 51.080, lng: -115.360, name: "Cochrane", pop: 32000, risk: "High", prov: "AB"},
+    ];
+
+    var riskColors = {
+        'Extreme': '#FF2200',
+        'High': '#E8712B',
+        'Moderate': '#F4A460'
+    };
+
+    communities.forEach(function(c) {
+        var radius = Math.max(5, Math.log10(c.pop) * 5);
+        var color = riskColors[c.risk] || '#E8712B';
+        var isPilot = c.status === 'PILOT';
+
+        var circle = L.circleMarker([c.lat, c.lng], {
+            radius: isPilot ? 12 : radius,
+            fillColor: isPilot ? '#00FF88' : color,
+            color: isPilot ? '#FFFFFF' : color,
+            weight: isPilot ? 3 : 1,
+            fillOpacity: isPilot ? 0.9 : 0.7,
+            opacity: 0.9
+        }).addTo(map);
+
+        circle.bindPopup(
+            '<div style="font-family:Open Sans,sans-serif">' +
+            '<b style="color:' + (isPilot ? '#00FF88' : color) + ';font-size:14px;">' + c.name + ', ' + c.prov + '</b>' +
+            (isPilot ? '<br><span style="color:#00FF88;font-weight:bold;">★ PILOT COMMUNITY</span>' : '') +
+            '<br><b>Population:</b> ' + c.pop.toLocaleString() +
+            '<br><b>WUI Risk:</b> <span style="color:' + color + '">' + c.risk + '</span>' +
+            '</div>'
+        );
+
+        // Label pilot community
+        if (isPilot) {
+            L.marker([c.lat, c.lng], {
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div style="background:#00FF8844;color:#fff;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:bold;white-space:nowrap;border:1px solid #00FF88;font-family:sans-serif;">★ ' + c.name + ' (PILOT)</div>',
+                    iconSize: [160, 20],
+                    iconAnchor: [80, -15]
+                })
+            }).addTo(map);
+        }
+    });
+})();
+</script>
+</body>
+</html>
