@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HydroDome - BC WUI Communities at Risk</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1A1A1A; }
+    #map {
+        width: 1200px;
+        height: 800px;
+    }
+    .leaflet-popup-content-wrapper {
+        background: #1A1A1AEE;
+        color: #FFFFFF;
+        border: 1px solid #E8712B;
+        border-radius: 4px;
+        font-family: 'Open Sans', sans-serif;
+    }
+    .leaflet-popup-tip { background: #1A1A1AEE; }
+    .info-legend {
+        background: #1A1A1ADD;
+        color: #FFFFFF;
+        padding: 10px 14px;
+        border-radius: 4px;
+        font-family: 'Open Sans', sans-serif;
+        font-size: 12px;
+        line-height: 20px;
+        border-left: 3px solid #E8712B;
+    }
+    .info-legend h4 {
+        font-family: 'Montserrat', sans-serif;
+        margin-bottom: 6px;
+        color: #E8712B;
+    }
+    .info-legend i {
+        width: 16px; height: 16px;
+        display: inline-block; margin-right: 6px;
+        vertical-align: middle; border-radius: 2px;
+    }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+        <div id="map-title" style="
+            position: absolute; top: 15px; left: 60px; z-index: 1000;
+            background: #1A1A1ADD; color: #FFFFFF;
+            padding: 10px 20px; border-radius: 4px;
+            font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700;
+            border-left: 4px solid #E8712B;
+            pointer-events: none;
+        ">HydroDome - BC WUI Communities at Risk</div>
+<script>
+(function() {
+    // Initialize map
+    var mapOptions = {
+        zoomControl: true,
+        attributionControl: true
+    };
+    
+    var initCenter = [54.0, -125.0];
+    var initZoom = 6;
+    
+    if (initCenter && initZoom) {
+        mapOptions.center = initCenter;
+        mapOptions.zoom = initZoom;
+    }
+    
+    var map = L.map('map', mapOptions);
+    
+    // Basemap
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Track bounds for auto-fit
+    var allBounds = [];
+    
+    
+    // Markers layer
+    var mainLayerData = {
+    "type": "FeatureCollection",
+    "features": [
+      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-119.496, 49.883]}, "properties": {"name": "Kelowna", "damage": "$720M (2023)", "risk": "Extreme"}},
+      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-121.581, 50.233]}, "properties": {"name": "Lytton", "damage": "$102M (2021)", "risk": "Extreme"}},
+      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-122.953, 53.917]}, "properties": {"name": "Pilot Community (Northern BC)", "damage": "Target Deployment", "risk": "High"}},
+      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-120.846, 51.648]}, "properties": {"name": "100 Mile House", "damage": "Evacuated 2017", "risk": "High"}},
+      {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-120.323, 50.671]}, "properties": {"name": "Kamloops", "damage": "Repeated WUI threat", "risk": "High"}}
+    ]
+  };
+    
+    var mainLayerIcon = L.divIcon({
+        html: '<svg width="24" height="36" viewBox="0 0 24 36"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#E8712B"/><circle cx="12" cy="12" r="5" fill="white"/></svg>',
+        iconSize: [24, 36],
+        iconAnchor: [12, 36],
+        popupAnchor: [0, -36],
+        className: ''
+    });
+    
+    var mainLayer = L.geoJSON(mainLayerData, {
+        pointToLayer: function(feature, latlng) {
+            return L.marker(latlng, { icon: mainLayerIcon });
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties) {
+                var popup = '<div>';
+                for (var k in feature.properties) {
+                    popup += '<b>' + k + ':</b> ' + feature.properties[k] + '<br>';
+                }
+                popup += '</div>';
+                layer.bindPopup(popup);
+            }
+        }
+    }).addTo(map);
+    if (mainLayer.getBounds().isValid()) allBounds.push(mainLayer.getBounds());
+    
+    
+    // Auto-fit if no center specified
+    if (!initCenter && allBounds.length > 0) {
+        var combined = allBounds[0];
+        for (var i = 1; i < allBounds.length; i++) {
+            combined = combined.extend(allBounds[i]);
+        }
+        map.fitBounds(combined, { padding: [30, 30] });
+    } else if (!initCenter) {
+        map.setView([54.0, -125.0], 6); // Default: BC
+    }
+    
+    
+    var legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function(map) {
+        var div = L.DomUtil.create('div', 'info-legend');
+        div.innerHTML = '<h4>HydroDome - BC WUI Communities at Risk</h4>';
+        var gradient = ["#1A1A1A", "#4A2810", "#8B4513", "#E8712B", "#FF9F5A"];
+        for (var i = 0; i < gradient.length; i++) {
+            div.innerHTML += '<i style="background:' + gradient[i] + '"></i> ' +
+                (i === 0 ? 'Low' : (i === gradient.length - 1 ? 'High' : '')) + '<br>';
+        }
+        return div;
+    };
+    legend.addTo(map);
+    
+})();
+</script>
+</body>
+</html>

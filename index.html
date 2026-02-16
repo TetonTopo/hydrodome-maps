@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Canadian WUI Infrastructure at Risk</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1A1A1A; }
+    #map { width: 1200px; height: 800px; }
+    .leaflet-popup-content-wrapper {
+        background: #1A1A1AEE; color: #FFF;
+        border: 1px solid #E8712B; border-radius: 4px;
+        font-family: 'Open Sans', sans-serif; font-size: 12px;
+    }
+    .leaflet-popup-tip { background: #1A1A1AEE; }
+    .pop-label {
+        background: none; border: none; box-shadow: none;
+        color: #FFF; font-family: 'Open Sans', sans-serif;
+        font-size: 10px; font-weight: 600; white-space: nowrap;
+        text-shadow: 1px 1px 3px #000, -1px -1px 3px #000;
+    }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="map-title" style="
+    position: absolute; top: 15px; left: 60px; z-index: 1000;
+    background: #1A1A1ADD; color: #FFF;
+    padding: 12px 24px; border-radius: 4px;
+    font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 700;
+    border-left: 4px solid #E8712B; pointer-events: none;
+">Canadian Communities in the Wildland-Urban Interface</div>
+
+<div id="logo-box" style="
+    position: absolute; bottom: 40px; right: 20px; z-index: 1000;
+    background: #1A1A1ADD; padding: 10px 14px; border-radius: 4px;
+    border: 1px solid #333;
+">
+    <img src="https://www.carmanahwildfire.com/wp-content/uploads/2025/09/Carmanah-Logo-White.png"
+         alt="Carmanah Wildfire" style="height: 50px; opacity: 0.9;"
+         onerror="this.parentElement.style.display='none'">
+    <div style="color: #999; font-family: 'Open Sans', sans-serif; font-size: 9px; margin-top: 4px; text-align: center;">
+        HydroDome by Carmanah Wildfire
+    </div>
+</div>
+
+<div id="stats-box" style="
+    position: absolute; bottom: 40px; left: 20px; z-index: 1000;
+    background: #1A1A1ADD; color: #FFF;
+    padding: 14px 20px; border-radius: 4px;
+    font-family: 'Open Sans', sans-serif; font-size: 12px;
+    border-left: 3px solid #E8712B; max-width: 380px; line-height: 1.7;
+">
+    <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; color: #E8712B; margin-bottom: 8px; font-size: 13px;">THE SCALE OF THE PROBLEM</div>
+    <div><span style="color: #E8712B; font-weight: 700;">3.9M</span> Canadian homes in WUI zones</div>
+    <div><span style="color: #E8712B; font-weight: 700;">$14.9B</span> insured losses from wildfire (2016-2023)</div>
+    <div><span style="color: #E8712B; font-weight: 700;">6.9%</span> faster WUI growth vs urban centres (Stats Can)</div>
+    <div><span style="color: #E8712B; font-weight: 700;">2023:</span> Record 18.5M hectares burned in Canada</div>
+    <div style="margin-top: 10px; font-size: 11px; color: #999;">
+        <span style="display:inline-block;width:12px;height:12px;background:#8B0000;margin-right:4px;vertical-align:middle;border-radius:2px;opacity:0.6;"></span>Historic Fire Perimeters (1980-2021)
+        <br>
+        <span style="display:inline-block;width:18px;height:18px;background:#E8712B;margin-right:4px;vertical-align:middle;border-radius:50%;opacity:0.8;"></span>Community (sized by population)
+        <br>
+        <span style="display:inline-block;width:18px;height:18px;background:#FF4444;margin-right:4px;vertical-align:middle;border-radius:50%;border:2px solid #FFF;"></span>Major wildfire event community
+    </div>
+</div>
+
+<script>
+(function() {
+    var map = L.map('map', {
+        center: [55, -106],
+        zoom: 4,
+        zoomControl: true
+    });
+
+    // Dark basemap
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB | Fire: NRCan CWFIS | Pop: Stats Canada 2021',
+        maxZoom: 19
+    }).addTo(map);
+
+    // CWFIS Historic Fire Perimeters - bright orange monochromatic
+    var fireLayer = L.tileLayer.wms('https://cwfis.cfs.nrcan.gc.ca/geoserver/public/wms', {
+        layers: 'NFDB_MRB',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.75,
+        attribution: 'NRCan CWFIS',
+        // SLD body for monochromatic orange styling
+        sld_body: '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>NFDB_MRB</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">#E8712B</CssParameter><CssParameter name="fill-opacity">0.8</CssParameter></Fill><Stroke><CssParameter name="stroke">#FF9F5A</CssParameter><CssParameter name="stroke-width">0.3</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
+    }).addTo(map);
+    
+    // Apply CSS filter to brighten the fire layer tiles
+    fireLayer.on('tileload', function(e) {
+        e.tile.style.filter = 'brightness(1.4) saturate(1.5)';
+    });
+
+    // Canadian population centres with WUI risk
+    // Format: [lat, lng, name, population, province, wuiRisk, fireHistory, estPropertyValue]
+    var communities = [
+        // BC - HIGH RISK
+        [49.883, -119.496, "Kelowna", 150000, "BC", "Extreme", "$720M damage (2023)", "$45B"],
+        [50.671, -120.323, "Kamloops", 100000, "BC", "Extreme", "Repeated WUI fires", "$25B"],
+        [53.917, -122.750, "Prince George", 80000, "BC", "High", "Surrounded by fuel", "$18B"],
+        [49.163, -123.937, "Nanaimo", 100000, "BC", "High", "WUI intermix", "$30B"],
+        [50.233, -121.581, "Lytton", 250, "BC", "Extreme", "DESTROYED 2021 - $102M", "$25M"],
+        [51.648, -120.846, "100 Mile House", 2000, "BC", "Extreme", "Evacuated 2017", "$400M"],
+        [52.130, -122.142, "Williams Lake", 11000, "BC", "Extreme", "Evacuated 2017", "$2.5B"],
+        [49.322, -117.661, "Trail", 8000, "BC", "High", "WUI interface", "$1.8B"],
+        [54.753, -127.168, "Smithers", 5000, "BC", "High", "Northern BC WUI", "$1B"],
+        [58.789, -122.760, "Fort Nelson", 3500, "BC", "Extreme", "Evacuated 2024", "$700M"],
+        [50.260, -119.270, "Vernon", 45000, "BC", "Extreme", "Adjacent to Kelowna fires", "$12B"],
+        [49.490, -117.291, "Nelson", 11000, "BC", "High", "Kootenay WUI", "$3B"],
+        [48.780, -123.706, "Duncan", 5000, "BC", "Moderate", "Island WUI", "$1.5B"],
+        [50.680, -119.185, "Salmon Arm", 18000, "BC", "High", "Shuswap fires 2023", "$4B"],
+        [49.049, -119.497, "Penticton", 37000, "BC", "Extreme", "Okanagan corridor", "$10B"],
+        [50.985, -118.196, "Revelstoke", 8000, "BC", "High", "Mountain WUI", "$2B"],
+        [52.975, -122.497, "Quesnel", 10000, "BC", "Extreme", "2017 fire season", "$2B"],
+        [48.430, -123.365, "Victoria", 395000, "BC", "Moderate", "Urban-wildland edge", "$120B"],
+        [49.249, -123.000, "Vancouver Metro", 2600000, "BC", "Low", "Urban but N.Shore WUI", "$800B"],
+        [55.759, -120.237, "Dawson Creek", 13000, "BC", "High", "Peace region WUI", "$3B"],
+        // Alberta - HIGH RISK
+        [56.726, -111.379, "Fort McMurray", 75000, "AB", "Extreme", "$9.9 BILLION damage (2016)", "$20B"],
+        [51.178, -115.571, "Canmore", 15000, "AB", "High", "Bow Valley WUI intermix", "$8B"],
+        [51.047, -114.066, "Calgary", 1340000, "AB", "Moderate", "Western edge WUI", "$350B"],
+        [53.544, -113.490, "Edmonton", 1010000, "AB", "Low-Mod", "Expanding periphery", "$280B"],
+        [52.268, -113.812, "Red Deer", 100000, "AB", "Moderate", "Central AB interface", "$25B"],
+        [49.694, -112.841, "Lethbridge", 100000, "AB", "Moderate", "Prairie-grassland WUI", "$22B"],
+        [53.893, -116.578, "Edson", 8500, "AB", "Extreme", "Evacuated 2023", "$2B"],
+        [54.767, -113.853, "Athabasca", 3000, "AB", "High", "Boreal WUI", "$600M"],
+        [51.390, -116.456, "Banff", 8000, "AB", "High", "Mountain WUI", "$4B"],
+        [55.166, -118.804, "Grande Prairie", 65000, "AB", "High", "Peace region", "$15B"],
+        [54.370, -110.180, "Bonnyville", 7000, "AB", "High", "NE Alberta boreal", "$1.5B"],
+        // Saskatchewan
+        [52.132, -106.670, "Saskatoon", 320000, "SK", "Moderate", "Expanding periphery", "$80B"],
+        [50.445, -104.618, "Regina", 230000, "SK", "Low", "Prairie urban", "$55B"],
+        [53.203, -105.753, "Prince Albert", 37000, "SK", "High", "Boreal edge", "$8B"],
+        [54.766, -108.413, "La Ronge", 3000, "SK", "Extreme", "Evacuated multiple times", "$400M"],
+        // Manitoba
+        [49.895, -97.138, "Winnipeg", 750000, "MB", "Low", "Prairie urban", "$180B"],
+        [53.825, -101.254, "The Pas", 5600, "MB", "High", "Boreal WUI", "$1B"],
+        [54.767, -101.876, "Flin Flon", 5200, "MB", "High", "Mining town boreal", "$900M"],
+        // Ontario
+        [46.490, -80.993, "Sudbury", 170000, "ON", "High", "Boreal shield WUI", "$35B"],
+        [48.382, -89.246, "Thunder Bay", 110000, "ON", "High", "NW Ontario boreal", "$22B"],
+        [46.509, -80.999, "Timmins", 42000, "ON", "High", "Mining/boreal WUI", "$8B"],
+        [47.000, -79.767, "Kirkland Lake", 7600, "ON", "High", "Boreal shield", "$1.5B"],
+        [49.766, -86.950, "Hearst", 5000, "ON", "Extreme", "Remote boreal", "$800M"],
+        [51.253, -80.854, "Moosonee", 1500, "ON", "High", "James Bay boreal", "$200M"],
+        [46.318, -79.468, "North Bay", 52000, "ON", "High", "Near Algonquin WUI", "$12B"],
+        // Quebec
+        [48.427, -71.068, "Saguenay", 160000, "QC", "Moderate", "Boreal edge", "$30B"],
+        [48.850, -78.117, "Val-d'Or", 33000, "QC", "High", "Abitibi boreal", "$6B"],
+        [49.218, -68.148, "Sept-Îles", 26000, "QC", "High", "North Shore boreal", "$5B"],
+        [48.567, -72.810, "Roberval", 10000, "QC", "High", "Lac-St-Jean boreal", "$2B"],
+        // NWT/Yukon
+        [62.454, -114.372, "Yellowknife", 20000, "NWT", "Extreme", "EVACUATED 2023 - Full city", "$6B"],
+        [60.723, -135.057, "Whitehorse", 30000, "YT", "High", "Boreal/mountain WUI", "$7B"],
+        [64.060, -139.432, "Dawson City", 2200, "YT", "High", "Remote northern WUI", "$400M"],
+        [62.510, -114.380, "Behchoko", 2000, "NWT", "Extreme", "Evacuated 2023", "$300M"],
+        // Atlantic
+        [44.648, -63.572, "Halifax", 440000, "NS", "Moderate", "2023 Tantallon fire - $165M", "$120B"],
+        [46.233, -63.131, "Charlottetown", 40000, "PE", "Low", "Island urban", "$10B"],
+        [47.560, -52.713, "St. John's", 110000, "NL", "Moderate", "Boreal edge", "$25B"],
+        [46.087, -64.773, "Moncton", 80000, "NB", "Moderate", "Forest interface", "$18B"],
+    ];
+
+    // Draw communities as scaled circles
+    communities.forEach(function(c) {
+        var lat = c[0], lng = c[1], name = c[2], pop = c[3], prov = c[4];
+        var risk = c[5], history = c[6], propVal = c[7];
+
+        // Scale radius by population (log scale for visual balance)
+        var radius = Math.max(4, Math.log10(pop) * 6);
+
+        // Color by risk level
+        var colors = {
+            'Extreme': '#FF2200',
+            'High': '#E8712B',
+            'Moderate': '#F4A460',
+            'Low-Mod': '#DAA520',
+            'Low': '#8B8B00'
+        };
+        var color = colors[risk] || '#E8712B';
+
+        // Major fire event = white border
+        var hasMajorEvent = history.includes('DESTROYED') || history.includes('BILLION') ||
+                           history.includes('EVACUATED') || history.includes('Evacuated');
+        var weight = hasMajorEvent ? 2.5 : 1;
+        var borderColor = hasMajorEvent ? '#FFFFFF' : color;
+
+        var circle = L.circleMarker([lat, lng], {
+            radius: radius,
+            fillColor: color,
+            color: borderColor,
+            weight: weight,
+            fillOpacity: 0.75,
+            opacity: 0.9
+        }).addTo(map);
+
+        // Popup
+        circle.bindPopup(
+            '<div>' +
+            '<b style="color:#E8712B;font-size:14px;">' + name + ', ' + prov + '</b><br>' +
+            '<b>Population:</b> ' + pop.toLocaleString() + '<br>' +
+            '<b>WUI Risk:</b> <span style="color:' + color + '">' + risk + '</span><br>' +
+            '<b>Fire History:</b> ' + history + '<br>' +
+            '<b>Est. Property Value:</b> ' + propVal +
+            '</div>'
+        );
+
+        // Labels for large communities
+        if (pop >= 50000) {
+            L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'pop-label',
+                    html: name,
+                    iconSize: [100, 14],
+                    iconAnchor: [-radius - 4, 7]
+                })
+            }).addTo(map);
+        }
+    });
+})();
+</script>
+</body>
+</html>
