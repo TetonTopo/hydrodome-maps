@@ -14,12 +14,12 @@
     .leaflet-popup-content-wrapper {
         background: #1A1A1AEE; color: #FFF;
         border: 1px solid #E8712B; border-radius: 4px;
-        font-family: 'Open Sans', sans-serif; font-size: 12px;
+        font-family: 'Montserrat', sans-serif; font-size: 16px;
     }
     .leaflet-popup-tip { background: #1A1A1AEE; }
     .pop-label {
         background: none; border: none; box-shadow: none;
-        color: #FFF; font-family: 'Open Sans', sans-serif;
+        color: #FFF; font-family: 'Montserrat', sans-serif;
         font-size: 10px; font-weight: 600; white-space: nowrap;
         text-shadow: 1px 1px 3px #000, -1px -1px 3px #000;
     }
@@ -44,15 +44,15 @@
     position: absolute; bottom: 40px; left: 20px; z-index: 1000;
     background: #1A1A1ADD; color: #FFF;
     padding: 14px 20px; border-radius: 4px;
-    font-family: 'Open Sans', sans-serif; font-size: 12px;
+    font-family: 'Montserrat', sans-serif; font-size: 14px;
     border-left: 3px solid #E8712B; max-width: 380px; line-height: 1.7;
 ">
-    <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; color: #E8712B; margin-bottom: 8px; font-size: 13px;">THE SCALE OF THE PROBLEM</div>
+    <div style="font-family: 'Montserrat', sans-serif; font-weight: 700; color: #E8712B; margin-bottom: 8px; font-size: 15px;">THE SCALE OF THE PROBLEM</div>
     <div><span style="color: #E8712B; font-weight: 700;">3.9M</span> Canadian homes in WUI zones</div>
     <div><span style="color: #E8712B; font-weight: 700;">$14.9B</span> insured losses from wildfire (2016-2023)</div>
     <div><span style="color: #E8712B; font-weight: 700;">6.9%</span> faster WUI growth vs urban centres (Stats Can)</div>
     <div><span style="color: #E8712B; font-weight: 700;">2023:</span> Record 18.5M hectares burned in Canada</div>
-    <div style="margin-top: 10px; font-size: 11px; color: #999;">
+    <div style="margin-top: 10px; font-size: 13px; color: #999;">
         <span style="display:inline-block;width:12px;height:12px;background:#8B0000;margin-right:4px;vertical-align:middle;border-radius:2px;opacity:0.6;"></span>Historic Fire Perimeters (1980-2021)
         <br>
         <span style="display:inline-block;width:18px;height:18px;background:#E8712B;margin-right:4px;vertical-align:middle;border-radius:50%;opacity:0.8;"></span>Community (sized by population)
@@ -77,13 +77,13 @@
 
     // CWFIS Historic Fire Perimeters - bright orange monochromatic
     var fireLayer = L.tileLayer.wms('https://cwfis.cfs.nrcan.gc.ca/geoserver/public/wms', {
-        layers: 'NFDB_MRB',
+        layers: 'nbac',
         format: 'image/png',
         transparent: true,
         opacity: 0.75,
         attribution: 'NRCan CWFIS',
         // SLD body for monochromatic orange styling
-        sld_body: '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>NFDB_MRB</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">#E8712B</CssParameter><CssParameter name="fill-opacity">0.8</CssParameter></Fill><Stroke><CssParameter name="stroke">#FF9F5A</CssParameter><CssParameter name="stroke-width">0.3</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
+        sld_body: '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>nbac</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">#E8712B</CssParameter><CssParameter name="fill-opacity">0.8</CssParameter></Fill><Stroke><CssParameter name="stroke">#FF9F5A</CssParameter><CssParameter name="stroke-width">0.3</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>'
     }).addTo(map);
     
     // Apply CSS filter to brighten the fire layer tiles
@@ -161,6 +161,10 @@
         [46.087, -64.773, "Moncton", 80000, "NB", "Moderate", "Forest interface", "$18B"],
     ];
 
+    // Community to highlight on load (marker emphasized + caption opened)
+    var HIGHLIGHT_NAME = "Kelowna";
+    var highlightCircle = null;
+
     // Draw communities as scaled circles
     communities.forEach(function(c) {
         var lat = c[0], lng = c[1], name = c[2], pop = c[3], prov = c[4];
@@ -185,19 +189,34 @@
         var weight = hasMajorEvent ? 2.5 : 1;
         var borderColor = hasMajorEvent ? '#FFFFFF' : color;
 
+        var isHighlight = (name === HIGHLIGHT_NAME);
+
+        // Glowing halo behind the highlighted community
+        if (isHighlight) {
+            L.circleMarker([lat, lng], {
+                radius: radius + 9,
+                fill: false,
+                color: '#FFFFFF',
+                weight: 1.5,
+                opacity: 0.55
+            }).addTo(map);
+        }
+
         var circle = L.circleMarker([lat, lng], {
-            radius: radius,
+            radius: isHighlight ? radius + 3 : radius,
             fillColor: color,
-            color: borderColor,
-            weight: weight,
-            fillOpacity: 0.75,
+            color: isHighlight ? '#FFFFFF' : borderColor,
+            weight: isHighlight ? 3 : weight,
+            fillOpacity: isHighlight ? 0.9 : 0.75,
             opacity: 0.9
         }).addTo(map);
+
+        if (isHighlight) { highlightCircle = circle; }
 
         // Popup
         circle.bindPopup(
             '<div>' +
-            '<b style="color:#E8712B;font-size:14px;">' + name + ', ' + prov + '</b><br>' +
+            '<b style="color:#E8712B;font-size:18px;">' + name + ', ' + prov + '</b><br>' +
             '<b>Population:</b> ' + pop.toLocaleString() + '<br>' +
             '<b>WUI Risk:</b> <span style="color:' + color + '">' + risk + '</span><br>' +
             '<b>Fire History:</b> ' + history + '<br>' +
@@ -217,6 +236,12 @@
             }).addTo(map);
         }
     });
+
+    // Open the highlighted community's caption on load (keep BC framing — no auto-pan)
+    if (highlightCircle) {
+        highlightCircle.getPopup().options.autoPan = false;
+        highlightCircle.openPopup();
+    }
 })();
 </script>
 </body>
