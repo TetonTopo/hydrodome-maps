@@ -34,7 +34,7 @@
     font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 700;
     border-left: 4px solid #E8712B; pointer-events: none;
 ">
-    <img src="https://www.carmanahwildfire.com/wp-content/uploads/2025/09/Carmanah-Logo-White.png"
+    <img src="carmanah-logo-white.png"
          alt="Carmanah Wildfire" style="height: 28px; opacity: 0.9; vertical-align: middle; margin-right: 12px;"
          onerror="this.style.display='none'">
     Canadian Communities in the Wildland-Urban Interface
@@ -69,11 +69,15 @@
         zoomControl: true
     });
 
-    // Dark basemap
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CartoDB | Fire: NRCan CWFIS | Pop: Stats Canada 2021',
-        maxZoom: 19
+    // Dark basemap. CARTO free tiles now watermark "API KEY REQUIRED", so use Esri's
+    // keyless dark canvas and darken it with a CSS filter to match the old look.
+    var baseLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri | Fire: NRCan CWFIS | Pop: Stats Canada 2021',
+        maxZoom: 16
     }).addTo(map);
+    baseLayer.on('tileload', function(e) {
+        e.tile.style.filter = 'brightness(0.55) saturate(0.6)';
+    });
 
     // CWFIS Historic Fire Perimeters - bright orange monochromatic
     var fireLayer = L.tileLayer.wms('https://cwfis.cfs.nrcan.gc.ca/geoserver/public/wms', {
